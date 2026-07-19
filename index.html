@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">HLL Artillerie-Rechner</title>
+<style>
+:root {
+  --bg: #23262b;
+  --card: #2e3238;
+  --accent: #d9663b;
+  --accent2: #3d4147;
+  --text: #eceef0;
+  --muted: #9aa0a6;
+  --green: #5fc9a0;
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 16px;
+}
+.top-bar {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+.lang-switch {
+  display: flex;
+  gap: 4px;
+  background: var(--card);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.lang-btn {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.8em;
+  font-weight: 600;
+}
+.lang-btn.active { background: var(--accent); color: #fff; }
+
+h1 { font-size: 1.6em; text-align: center; margin-bottom: 2px; }
+h1 span { color: var(--accent); }
+.subtitle { color: var(--muted); font-size: 0.82em; margin-bottom: 18px; text-align: center; }
+
+.container {
+  width: 100%;
+  max-width: 1000px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.controls-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.select-wrap { flex: 1; min-width: 180px; }
+.select-wrap label { display: block; font-size: 0.75em; color: var(--muted); margin-bottom: 6px; }
+select {
+  width: 100%; padding: 10px; border-radius: 8px;
+  border: 1.5px solid var(--accent2);
+  background: rgba(0,0,0,0.25); color: var(--text); font-size: 0.95em;
+}
+
+.quick-result-bar {
+  display: none;
+  background: linear-gradient(135deg, rgba(95,201,160,0.12), rgba(217,102,59,0.08));
+  border: 1.5px solid rgba(95,201,160,0.35);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  animation: fadeIn 0.25s ease;
+}
+.quick-result-bar.visible { display: flex; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.quick-result-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.quick-label {
+  font-size: 0.72em;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.quick-value {
+  font-size: 1.7em;
+  font-weight: 700;
+  color: var(--green);
+}
+.quick-value-mil { color: var(--accent); }
+.quick-unit { font-size: 0.75em; color: var(--muted); }
+.quick-divider {
+  width: 1px;
+  height: 28px;
+  background: rgba(255,255,255,0.12);
+}
+
+.map-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.map-outer {
+  position: relative;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid var(--accent2);
+  background: #000;
+}
+.map-wrapper {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+  transform-origin: 0 0;
+}
+.map-wrapper img.mapimg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  user-select: none;
+  pointer-events: none;
+}
+.gun-marker {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  transform: translate(-50%,-50%);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
+  transition: transform .15s;
+  z-index: 5;
+}
+.gun-marker:hover { transform: translate(-50%,-50%) scale(1.2); }
+.gun-marker.selected { border-color: var(--green); box-shadow: 0 0 0 3px rgba(78,204,163,0.5); }
+.gun-marker.team-us, .gun-marker.team-can { background: #2a6fdb; }
+.gun-marker.team-ger { background: #9c3a3a; }
+.gun-marker.team-rus { background: #b8871f; }
+.gun-marker.team-gb { background: #2a6fdb; }
+
+.target-marker {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%,-50%);
+  pointer-events: none;
+  z-index: 6;
+}
+.target-marker::before, .target-marker::after { content: ''; position: absolute; background: var(--accent); }
+.target-marker::before { width: 2px; height: 26px; left: 12px; top: 0; }
+.target-marker::after { width: 26px; height: 2px; top: 12px; left: 0; }
+
+.line-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
+
+.zoom-controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
+}
+.zoom-btn {
+  width: 32px; height: 32px;
+  border-radius: 6px;
+  border: none;
+  background: rgba(20,20,31,0.85);
+  color: var(--text);
+  font-size: 1.1em;
+  cursor: pointer;
+  font-weight: 700;
+}
+.zoom-btn:hover { background: var(--accent); }
+
+.info-row { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; justify-content: center; }
+.info-chip { background: rgba(0,0,0,0.25); border-radius: 6px; padding: 6px 10px; font-size: 0.75em; color: var(--muted); }
+.info-chip b { color: var(--text); }
+
+.result-panel { background: var(--card); border-radius: var(--radius); padding: 20px; text-align: center; border: 1px solid rgba(255,255,255,0.06); }
+.result-grid { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.result-block { background: rgba(78,204,163,0.08); border: 1.5px solid rgba(78,204,163,0.25); border-radius: 10px; padding: 16px 26px; min-width: 140px; }
+.result-label { font-size: 0.72em; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.result-value { font-size: 2.2em; font-weight: 700; color: var(--green); line-height: 1; }
+.result-unit { font-size: 0.55em; color: var(--muted); }
+
+.hint { margin-top: 12px; font-size: 0.78em; color: var(--muted); text-align: center; }
+
+.quick-reset-btn {
+  padding: 8px 14px; background: var(--accent2); color: var(--text);
+  border: none; border-radius: 8px; cursor: pointer; font-size: 0.8em; font-weight: 600;
+  white-space: nowrap;
+}
+.quick-reset-btn:hover { background: var(--accent); }
+
+.footer { margin-top: 4px; text-align: center; font-size: 0.68em; color: var(--muted); line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <div class="lang-switch">
+    <button class="lang-btn active" id="btn-lang-de" onclick="setLang('de')">DE</button>
+    <button class="lang-btn" id="btn-lang-en" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<h1 id="main-title">HLL <span>Artillerie</span>-Rechner</h1>
+<p class="subtitle" id="main-subtitle">Karte auswählen · Geschützstellung wählen · Ziel anklicken → Entfernung &amp; Mil automatisch</p>
+
+<div class="container">
+
+  <div class="controls-row">
+    <div class="select-wrap">
+      <label id="label-map" for="map-select">Karte</label>
+      <select id="map-select" onchange="onMapChange()"></select>
+    </div>
+    <div class="select-wrap">
+      <label id="label-gun" for="gun-select">Geschützstellung</label>
+      <select id="gun-select" onchange="onGunChange()"></select>
+    </div>
+  </div>
+
+  <div class="quick-result-bar" id="quick-result-bar">
+    <div class="quick-result-item">
+      <span class="quick-label" id="quick-label-dist">Entfernung</span>
+      <span class="quick-value" id="quick-dist-value">—</span>
+      <span class="quick-unit" id="quick-unit-dist">m</span>
+    </div>
+    <div class="quick-divider"></div>
+    <div class="quick-result-item">
+      <span class="quick-label" id="quick-label-mil">Elevation</span>
+      <span class="quick-value quick-value-mil" id="quick-mil-value">—</span>
+      <span class="quick-unit">Mil</span>
+    </div>
+    <div class="quick-divider"></div>
+    <button class="quick-reset-btn" id="btn-reset" onclick="resetTarget()">Zurücksetzen</button>
+  </div>
+
+  <div class="map-card">
+    <div class="map-outer" id="map-outer">
+      <div class="map-wrapper" id="map-wrapper">
+        <img class="mapimg" id="map-img" src="" alt="Karte">
+        <svg class="line-svg" id="line-svg"></svg>
+      </div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" onclick="event.stopPropagation(); zoomStep(1)">+</button>
+        <button class="zoom-btn" onclick="event.stopPropagation(); zoomStep(-1)">−</button>
+        <button class="zoom-btn" onclick="event.stopPropagation(); zoomReset()" style="font-size:0.7em">RST</button>
+      </div>
+    </div>
+    <div class="info-row" id="info-row"></div>
+    <p class="hint" id="hint-text">Klicke auf die Karte, um einen Zielpunkt zu setzen. Mit dem Mausrad zoomst du, bei aktivem Zoom kannst du die Karte per Klicken &amp; Ziehen verschieben. Die gewählte Geschützstellung ist grün markiert.</p>
+  </div>
+
+</div>
+
+<p class="footer" id="footer-text">
+  Kartenbilder &amp; Geschützkoordinaten basierend auf Community-Projekt „hll-arty-map-calculator" (l1tku, GitHub, MIT-Lizenz).<br>
+  Elevationswerte aus Community-Messtabellen. HLL hat natürliche Streuung (~20 m). Privatnutzung · keine offizielle Verbindung zu Team17 / Black Matter.
+</p>
+
+<script>
+const MAP_DATA = {"CAR": {"name_de": "Carentan", "name_en": "Carentan", "image": "images/maps/map_carentan.webp", "width": 2016, "height": 2016, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.01759, "yPct": 0.47834}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.01759, "yPct": 0.4739}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.0176, "yPct": 0.46976}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.98061, "yPct": 0.50255}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.98061, "yPct": 0.49829}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.98061, "yPct": 0.49388}]}, "DRI": {"name_de": "Driel", "name_en": "Driel", "image": "images/maps/map_driel.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.45684, "yPct": 0.94221}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.46843, "yPct": 0.94057}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.47651, "yPct": 0.93832}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.41894, "yPct": 0.07479}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.42641, "yPct": 0.07502}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.43569, "yPct": 0.07461}]}, "ELA": {"name_de": "El Alamein", "name_en": "El Alamein", "image": "images/maps/map_elalamein.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96166, "yPct": 0.46473}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.95722, "yPct": 0.4509}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.95155, "yPct": 0.43271}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.03647, "yPct": 0.48368}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.04173, "yPct": 0.46884}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02566, "yPct": 0.45081}]}, "EBR": {"name_de": "Elsenborn Ridge", "name_en": "Elsenborn Ridge", "image": "images/maps/map_elsenborn.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.50986, "yPct": 0.04346}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.51432, "yPct": 0.04487}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.51769, "yPct": 0.04303}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.46003, "yPct": 0.97004}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.468, "yPct": 0.96631}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.47567, "yPct": 0.97066}]}, "FOY": {"name_de": "Foy", "name_en": "Foy", "image": "images/maps/map_foy.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.57104, "yPct": 0.98158}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.57577, "yPct": 0.98408}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.57987, "yPct": 0.98536}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.53114, "yPct": 0.02643}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.5373, "yPct": 0.02686}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.54427, "yPct": 0.02686}]}, "HUR": {"name_de": "Hürtgen Forest", "name_en": "Hürtgen Forest", "image": "images/maps/map_hurtgen.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.95967, "yPct": 0.55256}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.95967, "yPct": 0.55659}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.95967, "yPct": 0.5603}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.03584, "yPct": 0.47503}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.02834, "yPct": 0.47992}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.03534, "yPct": 0.48539}]}, "JUN": {"name_de": "Juno Beach", "name_en": "Juno Beach", "image": "images/maps/map_juno_beach.webp", "width": 2000, "height": 2000, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.45991, "yPct": 0.96206}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.47598, "yPct": 0.96334}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.468, "yPct": 0.96664}, {"team": "ger", "label_de": "Deutschland Stand 4", "label_en": "Germany Stand 4", "xPct": 0.24869, "yPct": 0.98377}, {"team": "ger", "label_de": "Deutschland Stand 5", "label_en": "Germany Stand 5", "xPct": 0.25577, "yPct": 0.98747}, {"team": "ger", "label_de": "Deutschland Stand 6", "label_en": "Germany Stand 6", "xPct": 0.25968, "yPct": 0.97901}, {"team": "ger", "label_de": "Deutschland Stand 7", "label_en": "Germany Stand 7", "xPct": 0.77166, "yPct": 0.98873}, {"team": "ger", "label_de": "Deutschland Stand 8", "label_en": "Germany Stand 8", "xPct": 0.77975, "yPct": 0.99332}, {"team": "ger", "label_de": "Deutschland Stand 9", "label_en": "Germany Stand 9", "xPct": 0.78773, "yPct": 0.98949}, {"team": "can", "label_de": "Kanada Stand 1", "label_en": "Canada Stand 1", "xPct": 0.53757, "yPct": 0.04733}, {"team": "can", "label_de": "Kanada Stand 2", "label_en": "Canada Stand 2", "xPct": 0.54615, "yPct": 0.04348}, {"team": "can", "label_de": "Kanada Stand 3", "label_en": "Canada Stand 3", "xPct": 0.53073, "yPct": 0.04121}, {"team": "can", "label_de": "Kanada Stand 4", "label_en": "Canada Stand 4", "xPct": 0.72169, "yPct": 0.04761}, {"team": "can", "label_de": "Kanada Stand 5", "label_en": "Canada Stand 5", "xPct": 0.72435, "yPct": 0.04959}, {"team": "can", "label_de": "Kanada Stand 6", "label_en": "Canada Stand 6", "xPct": 0.72674, "yPct": 0.0496}, {"team": "can", "label_de": "Kanada Stand 7", "label_en": "Canada Stand 7", "xPct": 0.2378, "yPct": 0.03445}, {"team": "can", "label_de": "Kanada Stand 8", "label_en": "Canada Stand 8", "xPct": 0.24222, "yPct": 0.03481}, {"team": "can", "label_de": "Kanada Stand 9", "label_en": "Canada Stand 9", "xPct": 0.24557, "yPct": 0.03512}]}, "KHA": {"name_de": "Kharkov", "name_en": "Kharkov", "image": "images/maps/map_kharkov.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.48311, "yPct": 0.95731}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.49197, "yPct": 0.9581}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.50104, "yPct": 0.96181}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.52845, "yPct": 0.02341}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.5328, "yPct": 0.02554}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.53834, "yPct": 0.02763}]}, "MOR": {"name_de": "Mortain", "name_en": "Mortain", "image": "images/maps/map_mortain.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.05842, "yPct": 0.46752}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.05799, "yPct": 0.46108}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.05724, "yPct": 0.4561}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.95167, "yPct": 0.48692}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.95085, "yPct": 0.47963}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.95173, "yPct": 0.47314}]}, "OMA": {"name_de": "Omaha Beach", "name_en": "Omaha Beach", "image": "images/maps/map_omaha.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.02718, "yPct": 0.50871}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.02751, "yPct": 0.49666}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02939, "yPct": 0.52082}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.89238, "yPct": 0.53443}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.8955, "yPct": 0.54796}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.89984, "yPct": 0.51867}]}, "SME": {"name_de": "Sainte-Mère-Église", "name_en": "Sainte-Mère-Église", "image": "images/maps/map_stmereeglise.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96347, "yPct": 0.50282}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.96347, "yPct": 0.49467}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.96347, "yPct": 0.48774}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.02096, "yPct": 0.50936}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.02061, "yPct": 0.50518}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02028, "yPct": 0.50119}]}, "SMO": {"name_de": "Smolensk", "name_en": "Smolensk", "image": "images/maps/map_smolensk.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.9915, "yPct": 0.49665}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.9915, "yPct": 0.49}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.9915, "yPct": 0.48237}, {"team": "us", "label_de": "USA Stand 4", "label_en": "USA Stand 4", "xPct": 0.99056, "yPct": 0.72934}, {"team": "us", "label_de": "USA Stand 5", "label_en": "USA Stand 5", "xPct": 0.97688, "yPct": 0.2616}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.006, "yPct": 0.49715}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.006, "yPct": 0.48652}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.006, "yPct": 0.50753}, {"team": "ger", "label_de": "Deutschland Stand 4", "label_en": "Germany Stand 4", "xPct": 0.00693, "yPct": 0.29646}, {"team": "ger", "label_de": "Deutschland Stand 5", "label_en": "Germany Stand 5", "xPct": 0.00652, "yPct": 0.64954}]}, "TOB": {"name_de": "Tobruk", "name_en": "Tobruk", "image": "images/maps/map_tobruk.webp", "width": 2000, "height": 2000, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.03788, "yPct": 0.52576}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.03359, "yPct": 0.52992}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.03831, "yPct": 0.53768}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96563, "yPct": 0.46155}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.9632, "yPct": 0.47037}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.96523, "yPct": 0.49201}]}};
+
+
+const ARTY_DATA = {
+  US: { table: [
+    {dist:100,mil:978},{dist:200,mil:954},{dist:300,mil:930},{dist:400,mil:907},
+    {dist:500,mil:883},{dist:600,mil:859},{dist:700,mil:836},{dist:800,mil:812},
+    {dist:900,mil:788},{dist:1000,mil:764},{dist:1100,mil:741},{dist:1200,mil:717},
+    {dist:1300,mil:693},{dist:1400,mil:670},{dist:1500,mil:646},{dist:1600,mil:622}
+  ]},
+  GER: { table: [
+    {dist:100,mil:978},{dist:200,mil:954},{dist:300,mil:930},{dist:400,mil:907},
+    {dist:500,mil:883},{dist:600,mil:859},{dist:700,mil:836},{dist:800,mil:812},
+    {dist:900,mil:788},{dist:1000,mil:764},{dist:1100,mil:741},{dist:1200,mil:717},
+    {dist:1300,mil:693},{dist:1400,mil:670},{dist:1500,mil:646},{dist:1600,mil:622}
+  ]},
+  RUS: { table: [
+    {dist:100,mil:1120},{dist:200,mil:1099},{dist:300,mil:1077},{dist:400,mil:1056},
+    {dist:500,mil:1035},{dist:600,mil:1013},{dist:700,mil:992},{dist:800,mil:971},
+    {dist:900,mil:949},{dist:1000,mil:928},{dist:1100,mil:907},{dist:1200,mil:885},
+    {dist:1300,mil:864},{dist:1400,mil:843},{dist:1500,mil:821},{dist:1600,mil:800}
+  ]},
+  GB: { table: [
+    {dist:100,mil:533},{dist:200,mil:516},{dist:300,mil:498},{dist:400,mil:480},
+    {dist:500,mil:462},{dist:600,mil:444},{dist:700,mil:427},{dist:800,mil:409},
+    {dist:900,mil:391},{dist:1000,mil:373},{dist:1100,mil:356},{dist:1200,mil:338},
+    {dist:1300,mil:320},{dist:1400,mil:302},{dist:1500,mil:284},{dist:1600,mil:267}
+  ]},
+  CAN: { table: [
+    {dist:100,mil:533},{dist:200,mil:516},{dist:300,mil:498},{dist:400,mil:480},
+    {dist:500,mil:462},{dist:600,mil:444},{dist:700,mil:427},{dist:800,mil:409},
+    {dist:900,mil:391},{dist:1000,mil:373},{dist:1100,mil:356},{dist:1200,mil:338},
+    {dist:1300,mil:320},{dist:1400,mil:302},{dist:1500,mil:284},{dist:1600,mil:267}
+  ]}
+};
+
+function teamToFaction(team) {
+  const map = { us: "US", ger: "GER", rus: "RUS", gb: "GB", can: "CAN" };
+  return map[team] || "US";
+}
+
+function interpolateMil(faction, dist) {
+  const table = ARTY_DATA[faction].table;
+  if (dist <= table[0].dist) return table[0].mil;
+  if (dist >= table[table.length-1].dist) return table[table.length-1].mil;
+  for (let i = 0; i < table.length - 1; i++) {
+    const a = table[i], b = table[i+1];
+    if (dist >= a.dist && dist <= b.dist) {
+      const t = (dist - a.dist) / (b.dist - a.dist);
+      return a.mil + t * (b.mil - a.mil);
+    }
+  }
+  return null;
+}
+
+
+const I18N = {
+  de: {
+    pageTitle: "HLL Artillerie-Rechner",
+    title: 'HLL <span>Artillerie</span>-Rechner',
+    subtitle: "Karte auswählen · Geschützstellung wählen · Ziel anklicken → Entfernung &amp; Mil automatisch",
+    labelMap: "Karte",
+    labelGun: "Geschützstellung",
+    hint: "Klicke auf die Karte, um einen Zielpunkt zu setzen. Mit dem Mausrad zoomst du, bei aktivem Zoom kannst du die Karte per Klicken &amp; Ziehen verschieben. Die gewählte Geschützstellung ist grün markiert.",
+    labelDist: "Entfernung",
+    unitDist: "Meter",
+    labelMil: "Elevation",
+    quickDist: "Entfernung",
+    quickMil: "Elevation",
+    reset: "Zurücksetzen",
+    footer: 'Kartenbilder &amp; Geschützkoordinaten basierend auf Community-Projekt „hll-arty-map-calculator" (l1tku, GitHub, MIT-Lizenz).<br>Elevationswerte aus Community-Messtabellen. HLL hat natürliche Streuung (~20 m). Privatnutzung · keine offizielle Verbindung zu Team17 / Black Matter.',
+    gunLabel: "Geschütz",
+    factionLabel: "Fraktion",
+    outOfRange: "Außerhalb Reichweite (100–1600m)"
+  },
+  en: {
+    pageTitle: "HLL Artillery Calculator",
+    title: 'HLL <span>Artillery</span> Calculator',
+    subtitle: "Select map · choose gun position · click target → distance &amp; mils calculated automatically",
+    labelMap: "Map",
+    labelGun: "Gun Position",
+    hint: "Click on the map to set a target. Use the mouse wheel to zoom, and click &amp; drag to pan while zoomed in.",
+    labelDist: "Distance",
+    unitDist: "Meters",
+    labelMil: "Elevation",
+    quickDist: "Distance",
+    quickMil: "Elevation",
+    reset: "Reset",
+    footer: 'Map images &amp; gun coordinates based on community project "hll-arty-map-calculator" (l1tku, GitHub, MIT license).<br>Elevation values from community measurement tables. HLL has natural dispersion (~20 m). Private use only · no official affiliation with Team17 / Black Matter.',
+    gunLabel: "Gun",
+    factionLabel: "Faction",
+    outOfRange: "Out of range (100–1600m)"
+  }
+};
+
+let currentLang = 'de';
+let currentMapKey = null;
+let currentGunIndex = null;
+let targetPct = null;
+let zoomLevel = 1;
+let panX = 0, panY = 0;
+const MIN_ZOOM = 1, MAX_ZOOM = 5;
+
+const mapSelect = document.getElementById('map-select');
+const gunSelect = document.getElementById('gun-select');
+const mapImg = document.getElementById('map-img');
+const mapOuter = document.getElementById('map-outer');
+const mapWrapper = document.getElementById('map-wrapper');
+const lineSvg = document.getElementById('line-svg');
+const infoRow = document.getElementById('info-row');
+
+function teamLabel(team) {
+  const labels_de = { us: "USA", ger: "Deutschland", rus: "Sowjetunion", gb: "Großbritannien", can: "Kanada" };
+  const labels_en = { us: "USA", ger: "Germany", rus: "Soviet Union", gb: "Great Britain", can: "Canada" };
+  return currentLang === 'de' ? (labels_de[team] || team) : (labels_en[team] || team);
+}
+
+function setLang(lang) {
+  currentLang = lang;
+  document.getElementById('btn-lang-de').classList.toggle('active', lang === 'de');
+  document.getElementById('btn-lang-en').classList.toggle('active', lang === 'en');
+  const t = I18N[lang];
+  document.getElementById('page-title').textContent = t.pageTitle;
+  document.getElementById('main-title').innerHTML = t.title;
+  document.getElementById('main-subtitle').innerHTML = t.subtitle;
+  document.getElementById('label-map').textContent = t.labelMap;
+  document.getElementById('label-gun').textContent = t.labelGun;
+  document.getElementById('hint-text').textContent = t.hint;
+  document.getElementById('quick-label-dist').textContent = t.quickDist;
+  document.getElementById('quick-label-mil').textContent = t.quickMil;
+  document.getElementById('quick-unit-dist').textContent = t.unitDist === "Meter" ? "m" : "m";
+  document.getElementById('btn-reset').textContent = t.reset;
+  document.getElementById('footer-text').innerHTML = t.footer;
+  document.documentElement.lang = lang;
+  populateMapOptions();
+  populateGunOptions();
+  updateResults();
+}
+
+function populateMapOptions() {
+  const prevKey = currentMapKey;
+  mapSelect.innerHTML = '';
+  Object.keys(MAP_DATA).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = currentLang === 'de' ? MAP_DATA[key].name_de : MAP_DATA[key].name_en;
+    mapSelect.appendChild(opt);
+  });
+  mapSelect.value = prevKey || 'CAR';
+}
+
+function populateGunOptions() {
+  const map = MAP_DATA[currentMapKey];
+  const prevIndex = currentGunIndex;
+  gunSelect.innerHTML = '';
+  map.stands.forEach((s, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    const label = currentLang === 'de' ? s.label_de : s.label_en;
+    opt.textContent = `${label} (${teamLabel(s.team)})`;
+    gunSelect.appendChild(opt);
+  });
+  gunSelect.value = (prevIndex !== null && prevIndex < map.stands.length) ? prevIndex : 0;
+}
+
+function initMapOptions() {
+  populateMapOptions();
+  currentMapKey = 'CAR';
+  onMapChange();
+}
+
+function onMapChange() {
+  currentMapKey = mapSelect.value;
+  const map = MAP_DATA[currentMapKey];
+  mapImg.src = map.image;
+  currentGunIndex = 0;
+  populateGunOptions();
+  targetPct = null;
+  zoomReset();
+  renderMarkers();
+  updateResults();
+}
+
+function onGunChange() {
+  currentGunIndex = parseInt(gunSelect.value);
+  renderMarkers();
+  updateResults();
+}
+
+function renderMarkers() {
+  document.querySelectorAll('.gun-marker, .target-marker').forEach(el => el.remove());
+  const map = MAP_DATA[currentMapKey];
+  map.stands.forEach((s, i) => {
+    const el = document.createElement('div');
+    el.className = `gun-marker team-${s.team}` + (i === currentGunIndex ? ' selected' : '');
+    el.style.left = (s.xPct * 100) + '%';
+    el.style.top = (s.yPct * 100) + '%';
+    el.textContent = 'A';
+    el.title = currentLang === 'de' ? s.label_de : s.label_en;
+    el.onclick = (e) => { e.stopPropagation(); gunSelect.value = i; onGunChange(); };
+    mapWrapper.appendChild(el);
+  });
+  if (targetPct) {
+    const tel = document.createElement('div');
+    tel.className = 'target-marker';
+    tel.style.left = (targetPct.x * 100) + '%';
+    tel.style.top = (targetPct.y * 100) + '%';
+    mapWrapper.appendChild(tel);
+  }
+  drawLine();
+}
+
+function drawLine() {
+  lineSvg.innerHTML = '';
+  if (!targetPct) return;
+  const map = MAP_DATA[currentMapKey];
+  const gun = map.stands[currentGunIndex];
+  const rect = mapWrapper.getBoundingClientRect();
+  const scaleFactorX = rect.width;
+  const scaleFactorY = rect.height;
+  const x1 = gun.xPct * scaleFactorX, y1 = gun.yPct * scaleFactorY;
+  const x2 = targetPct.x * scaleFactorX, y2 = targetPct.y * scaleFactorY;
+  const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+  line.setAttribute('x1', x1); line.setAttribute('y1', y1);
+  line.setAttribute('x2', x2); line.setAttribute('y2', y2);
+  line.setAttribute('stroke', '#4ecca3');
+  line.setAttribute('stroke-width', 2 / zoomLevel);
+  line.setAttribute('stroke-dasharray', (6/zoomLevel) + ',' + (4/zoomLevel));
+  lineSvg.appendChild(line);
+}
+
+function getRelativeCoords(clientX, clientY) {
+  const rect = mapOuter.getBoundingClientRect();
+  const px = (clientX - rect.left) / rect.width;
+  const py = (clientY - rect.top) / rect.height;
+  const x = panX + px / zoomLevel;
+  const y = panY + py / zoomLevel;
+  return { x, y };
+}
+
+mapOuter.addEventListener('click', (e) => {
+  if (dragMoved) { dragMoved = false; return; }
+  targetPct = getRelativeCoords(e.clientX, e.clientY);
+  targetPct.x = Math.max(0, Math.min(1, targetPct.x));
+  targetPct.y = Math.max(0, Math.min(1, targetPct.y));
+  renderMarkers();
+  updateResults();
+});
+
+function applyTransform() {
+  mapWrapper.style.transform = `scale(${zoomLevel}) translate(${-panX*100}%, ${-panY*100}%)`;
+  mapWrapper.style.width = '100%';
+  mapWrapper.style.height = '100%';
+  drawLine();
+}
+
+mapOuter.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const rect = mapOuter.getBoundingClientRect();
+  const mouseX = (e.clientX - rect.left) / rect.width;
+  const mouseY = (e.clientY - rect.top) / rect.height;
+
+  const worldX = panX + mouseX / zoomLevel;
+  const worldY = panY + mouseY / zoomLevel;
+
+  const delta = e.deltaY < 0 ? 1.15 : 1/1.15;
+  const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomLevel * delta));
+
+  panX = worldX - mouseX / newZoom;
+  panY = worldY - mouseY / newZoom;
+
+  const maxPan = 1 - 1/newZoom;
+  panX = Math.max(0, Math.min(maxPan, panX));
+  panY = Math.max(0, Math.min(maxPan, panY));
+
+  zoomLevel = newZoom;
+  applyTransform();
+  mapOuter.style.cursor = zoomLevel > 1 ? 'grab' : 'crosshair';
+}, { passive: false });
+
+function zoomStep(dir) {
+  const factor = dir > 0 ? 1.3 : 1/1.3;
+  const newZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoomLevel * factor));
+  const cx = panX + 0.5/zoomLevel;
+  const cy = panY + 0.5/zoomLevel;
+  panX = cx - 0.5/newZoom;
+  panY = cy - 0.5/newZoom;
+  const maxPan = 1 - 1/newZoom;
+  panX = Math.max(0, Math.min(maxPan, panX));
+  panY = Math.max(0, Math.min(maxPan, panY));
+  zoomLevel = newZoom;
+  applyTransform();
+  mapOuter.style.cursor = zoomLevel > 1 ? 'grab' : 'crosshair';
+}
+
+function zoomReset() {
+  zoomLevel = 1; panX = 0; panY = 0;
+  applyTransform();
+  mapOuter.style.cursor = 'crosshair';
+}
+
+let isDragging = false, dragMoved = false, dragStartX = 0, dragStartY = 0, panStartX = 0, panStartY = 0;
+const DRAG_THRESHOLD = 4;
+
+mapOuter.addEventListener('mousedown', (e) => {
+  if (zoomLevel <= 1) return;
+  isDragging = true;
+  dragMoved = false;
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  panStartX = panX; panStartY = panY;
+  mapOuter.style.cursor = 'grabbing';
+  e.preventDefault();
+});
+
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  const moveDist = Math.hypot(e.clientX - dragStartX, e.clientY - dragStartY);
+  if (moveDist > DRAG_THRESHOLD) dragMoved = true;
+
+  const rect = mapOuter.getBoundingClientRect();
+  const dx = (e.clientX - dragStartX) / rect.width / zoomLevel;
+  const dy = (e.clientY - dragStartY) / rect.height / zoomLevel;
+  const maxPan = 1 - 1/zoomLevel;
+  panX = Math.max(0, Math.min(maxPan, panStartX - dx));
+  panY = Math.max(0, Math.min(maxPan, panStartY - dy));
+  applyTransform();
+});
+
+window.addEventListener('mouseup', () => {
+  isDragging = false;
+  mapOuter.style.cursor = zoomLevel > 1 ? 'grab' : 'crosshair';
+});
+
+// Touch support for mobile panning
+mapOuter.addEventListener('touchstart', (e) => {
+  if (zoomLevel <= 1 || e.touches.length !== 1) return;
+  isDragging = true;
+  dragMoved = false;
+  dragStartX = e.touches[0].clientX; dragStartY = e.touches[0].clientY;
+  panStartX = panX; panStartY = panY;
+}, { passive: true });
+
+mapOuter.addEventListener('touchmove', (e) => {
+  if (!isDragging || e.touches.length !== 1) return;
+  const moveDist = Math.hypot(e.touches[0].clientX - dragStartX, e.touches[0].clientY - dragStartY);
+  if (moveDist > DRAG_THRESHOLD) dragMoved = true;
+
+  const rect = mapOuter.getBoundingClientRect();
+  const dx = (e.touches[0].clientX - dragStartX) / rect.width / zoomLevel;
+  const dy = (e.touches[0].clientY - dragStartY) / rect.height / zoomLevel;
+  const maxPan = 1 - 1/zoomLevel;
+  panX = Math.max(0, Math.min(maxPan, panStartX - dx));
+  panY = Math.max(0, Math.min(maxPan, panStartY - dy));
+  applyTransform();
+}, { passive: true });
+
+mapOuter.addEventListener('touchend', () => { isDragging = false; });
+
+function resetTarget() {
+  targetPct = null;
+  renderMarkers();
+  updateResults();
+}
+
+function updateResults() {
+  const quickBar = document.getElementById('quick-result-bar');
+  const quickDist = document.getElementById('quick-dist-value');
+  const quickMil = document.getElementById('quick-mil-value');
+  infoRow.innerHTML = '';
+  const t = I18N[currentLang];
+
+  if (!targetPct || currentGunIndex === null) {
+    quickBar.classList.remove('visible');
+    return;
+  }
+
+  quickBar.classList.add('visible');
+
+  const map = MAP_DATA[currentMapKey];
+  const gun = map.stands[currentGunIndex];
+  const dxMeters = (targetPct.x - gun.xPct) * map.width;
+  const dyMeters = (targetPct.y - gun.yPct) * map.height;
+  const distMeters = Math.sqrt(dxMeters*dxMeters + dyMeters*dyMeters);
+  const distRounded = Math.round(distMeters);
+
+  const faction = teamToFaction(gun.team);
+  let milValue = '—';
+  if (distRounded >= 100 && distRounded <= 1600) {
+    milValue = Math.round(interpolateMil(faction, distRounded));
+  }
+
+  quickDist.textContent = distRounded;
+  quickMil.textContent = milValue;
+
+  const gunLabelText = currentLang === 'de' ? gun.label_de : gun.label_en;
+  const chip1 = document.createElement('div');
+  chip1.className = 'info-chip';
+  chip1.innerHTML = `${t.gunLabel}: <b>${gunLabelText}</b>`;
+  const chip2 = document.createElement('div');
+  chip2.className = 'info-chip';
+  chip2.innerHTML = `${t.factionLabel}: <b>${teamLabel(gun.team)}</b>`;
+  infoRow.appendChild(chip1);
+  infoRow.appendChild(chip2);
+
+  if (distRounded < 100 || distRounded > 1600) {
+    const chip3 = document.createElement('div');
+    chip3.className = 'info-chip';
+    chip3.innerHTML = `<b style="color:#e94560">${t.outOfRange}</b>`;
+    infoRow.appendChild(chip3);
+  }
+}
+
+window.addEventListener('resize', drawLine);
+initMapOptions();
+</script>
+
+</body>
+</html>
