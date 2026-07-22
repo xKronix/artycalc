@@ -107,6 +107,7 @@ select {
   color: var(--green);
 }
 .quick-value-mil { color: var(--accent); }
+.quick-value-bearing { color: #5aa9e6; }
 .quick-unit { font-size: 0.75em; color: var(--muted); }
 .quick-divider {
   width: 1px;
@@ -196,6 +197,24 @@ select {
 
 .line-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
 
+.hover-hud {
+  position: absolute;
+  display: none;
+  background: rgba(20,22,26,0.92);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+.hover-hud.visible { display: block; }
+.hover-hud-sep { color: var(--muted); margin: 0 6px; font-weight: 400; }
+
 .zoom-controls {
   position: absolute;
   bottom: 10px;
@@ -236,6 +255,63 @@ select {
   white-space: nowrap;
 }
 .quick-reset-btn:hover { background: var(--accent); }
+
+.manual-calc-card {
+  background: var(--card);
+  border-radius: var(--radius);
+  border: 1px solid rgba(255,255,255,0.06);
+  overflow: hidden;
+}
+.manual-toggle {
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 14px 18px;
+  font-size: 0.9em;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.manual-toggle:hover { background: rgba(255,255,255,0.03); }
+.manual-chevron { transition: transform 0.2s; color: var(--muted); }
+.manual-chevron.open { transform: rotate(180deg); }
+.manual-body {
+  display: none;
+  padding: 0 18px 18px;
+  flex-direction: column;
+  gap: 12px;
+}
+.manual-body.open { display: flex; }
+.manual-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.manual-row label { font-size: 0.82em; color: var(--muted); white-space: nowrap; }
+.manual-row input, .manual-row select {
+  flex: 1;
+  max-width: 160px;
+  background: var(--bg);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 8px 10px;
+  font-size: 0.9em;
+}
+.manual-result {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255,255,255,0.08);
+}
+.manual-result span:first-child { font-size: 0.78em; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.manual-result-value { font-size: 1.6em; font-weight: 700; color: var(--green); }
 
 .footer { margin-top: 4px; text-align: center; font-size: 0.68em; color: var(--muted); line-height: 1.6; }
 .github-link { margin-top: 10px; text-align: center; }
@@ -291,6 +367,12 @@ select {
       <span class="quick-unit">Mil</span>
     </div>
     <div class="quick-divider"></div>
+    <div class="quick-result-item">
+      <span class="quick-label" id="quick-label-bearing">Richtung</span>
+      <span class="quick-value quick-value-bearing" id="quick-bearing-value">—</span>
+      <span class="quick-unit">°</span>
+    </div>
+    <div class="quick-divider"></div>
     <button class="quick-reset-btn" id="btn-reset" onclick="resetTarget()">Zurücksetzen</button>
   </div>
 
@@ -310,6 +392,28 @@ select {
     <p class="hint" id="hint-text">Klicke auf die Karte, um einen Zielpunkt zu setzen. Mit dem Mausrad zoomst du, bei aktivem Zoom kannst du die Karte per Klicken &amp; Ziehen verschieben. Die gewählte Geschützstellung ist grün markiert.</p>
   </div>
 
+  <div class="manual-calc-card">
+    <button class="manual-toggle" id="manual-toggle" onclick="toggleManualCalc()">
+      <span id="manual-toggle-label">Manueller Rechner</span>
+      <span class="manual-chevron" id="manual-chevron">▾</span>
+    </button>
+    <div class="manual-body" id="manual-body">
+      <div class="manual-row">
+        <label for="manual-dist-input" id="manual-dist-label">Entfernung (m)</label>
+        <input type="number" id="manual-dist-input" min="0" step="1" placeholder="z.B. 850" oninput="onManualInput()">
+      </div>
+      <div class="manual-row">
+        <label id="manual-faction-label">Fraktion</label>
+        <select id="manual-faction-select" onchange="onManualInput()"></select>
+      </div>
+      <div class="manual-result" id="manual-result-row">
+        <span id="manual-result-label">Elevation</span>
+        <span class="manual-result-value" id="manual-result-value">—</span>
+        <span>Mil</span>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <p class="footer" id="footer-text">
@@ -321,7 +425,7 @@ select {
     <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true">
       <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>
     </svg>
-    <span>Github</span>
+    <span>github.com/xKronix/artycalc</span>
   </a>
 </p>
 
@@ -382,6 +486,17 @@ function interpolateMil(faction, dist) {
   return null;
 }
 
+function calcBearing(dxMeters, dyMeters) {
+  let deg = Math.atan2(dxMeters, -dyMeters) * (180 / Math.PI);
+  if (deg < 0) deg += 360;
+  return Math.round(deg);
+}
+
+function manualToMil(distMeters, faction) {
+  if (distMeters < 100 || distMeters > 1600) return null;
+  return Math.round(interpolateMil(faction, distMeters));
+}
+
 
 const I18N = {
   de: {
@@ -396,6 +511,10 @@ const I18N = {
     labelMil: "Elevation",
     quickDist: "Entfernung",
     quickMil: "Elevation",
+    quickBearing: "Richtung",
+    manualTitle: "Manueller Rechner",
+    manualDistLabel: "Entfernung (m)",
+    manualPlaceholder: "z.B. 850",
     reset: "Zurücksetzen",
     footer: 'Kartenbilder &amp; Geschützkoordinaten basierend auf Community-Projekt „hll-arty-map-calculator" (l1tku, GitHub, MIT-Lizenz).<br>Elevationswerte aus Community-Messtabellen. HLL hat natürliche Streuung (~20 m). Privatnutzung · keine offizielle Verbindung zu Team17 / Black Matter.',
     gunLabel: "Geschütz",
@@ -414,6 +533,10 @@ const I18N = {
     labelMil: "Elevation",
     quickDist: "Distance",
     quickMil: "Elevation",
+    quickBearing: "Bearing",
+    manualTitle: "Manual Calculator",
+    manualDistLabel: "Distance (m)",
+    manualPlaceholder: "e.g. 850",
     reset: "Reset",
     footer: 'Map images &amp; gun coordinates based on community project "hll-arty-map-calculator" (l1tku, GitHub, MIT license).<br>Elevation values from community measurement tables. HLL has natural dispersion (~20 m). Private use only · no official affiliation with Team17 / Black Matter.',
     gunLabel: "Gun",
@@ -457,12 +580,20 @@ function setLang(lang) {
   document.getElementById('hint-text').textContent = t.hint;
   document.getElementById('quick-label-dist').textContent = t.quickDist;
   document.getElementById('quick-label-mil').textContent = t.quickMil;
+  document.getElementById('quick-label-bearing').textContent = t.quickBearing;
   document.getElementById('quick-unit-dist').textContent = t.unitDist === "Meter" ? "m" : "m";
   document.getElementById('btn-reset').textContent = t.reset;
   document.getElementById('footer-text').innerHTML = t.footer;
+  document.getElementById('manual-toggle-label').textContent = t.manualTitle;
+  document.getElementById('manual-dist-label').textContent = t.manualDistLabel;
+  document.getElementById('manual-faction-label').textContent = t.factionLabel;
+  document.getElementById('manual-dist-input').placeholder = t.manualPlaceholder;
+  document.getElementById('manual-result-label').textContent = t.labelMil;
   document.documentElement.lang = lang;
   populateMapOptions();
   populateGunOptions();
+  populateManualFactionOptions();
+  onManualInput();
   updateResults();
 }
 
@@ -588,6 +719,53 @@ mapOuter.addEventListener('click', (e) => {
   updateResults();
 });
 
+const hoverHud = document.createElement('div');
+hoverHud.className = 'hover-hud';
+hoverHud.id = 'hover-hud';
+mapOuter.appendChild(hoverHud);
+
+mapOuter.addEventListener('mousemove', (e) => {
+  if (isDragging || currentGunIndex === null) {
+    hoverHud.classList.remove('visible');
+    return;
+  }
+  const coords = getRelativeCoords(e.clientX, e.clientY);
+  if (coords.x < 0 || coords.x > 1 || coords.y < 0 || coords.y > 1) {
+    hoverHud.classList.remove('visible');
+    return;
+  }
+
+  const map = MAP_DATA[currentMapKey];
+  const gun = map.stands[currentGunIndex];
+  const dxMeters = (coords.x - gun.xPct) * map.width;
+  const dyMeters = (coords.y - gun.yPct) * map.height;
+  const distMeters = Math.sqrt(dxMeters*dxMeters + dyMeters*dyMeters);
+  const distRounded = Math.round(distMeters);
+  const bearing = calcBearing(dxMeters, dyMeters);
+  const faction = teamToFaction(gun.team);
+  const t = I18N[currentLang];
+
+  let milText = '—';
+  if (distRounded >= 100 && distRounded <= 1600) {
+    milText = Math.round(interpolateMil(faction, distRounded));
+  }
+
+  hoverHud.innerHTML = `<span>${distRounded}m</span><span class="hover-hud-sep">•</span><span>${milText} Mil</span><span class="hover-hud-sep">•</span><span>${bearing}°</span>`;
+
+  const outerRect = mapOuter.getBoundingClientRect();
+  let hx = e.clientX - outerRect.left + 16;
+  let hy = e.clientY - outerRect.top + 16;
+  if (hx > outerRect.width - 140) hx = e.clientX - outerRect.left - 150;
+  if (hy > outerRect.height - 40) hy = e.clientY - outerRect.top - 40;
+  hoverHud.style.left = hx + 'px';
+  hoverHud.style.top = hy + 'px';
+  hoverHud.classList.add('visible');
+});
+
+mapOuter.addEventListener('mouseleave', () => {
+  hoverHud.classList.remove('visible');
+});
+
 function applyTransform() {
   mapWrapper.style.transform = `scale(${zoomLevel}) translate(${-panX*100}%, ${-panY*100}%)`;
   mapWrapper.style.width = '100%';
@@ -707,6 +885,7 @@ function updateResults() {
   const quickBar = document.getElementById('quick-result-bar');
   const quickDist = document.getElementById('quick-dist-value');
   const quickMil = document.getElementById('quick-mil-value');
+  const quickBearing = document.getElementById('quick-bearing-value');
   infoRow.innerHTML = '';
   const t = I18N[currentLang];
 
@@ -723,6 +902,7 @@ function updateResults() {
   const dyMeters = (targetPct.y - gun.yPct) * map.height;
   const distMeters = Math.sqrt(dxMeters*dxMeters + dyMeters*dyMeters);
   const distRounded = Math.round(distMeters);
+  const bearing = calcBearing(dxMeters, dyMeters);
 
   const faction = teamToFaction(gun.team);
   let milValue = '—';
@@ -732,6 +912,7 @@ function updateResults() {
 
   quickDist.textContent = distRounded;
   quickMil.textContent = milValue;
+  quickBearing.textContent = bearing;
 
   const gunLabelText = currentLang === 'de' ? gun.label_de : gun.label_en;
   const chip1 = document.createElement('div');
@@ -751,6 +932,49 @@ function updateResults() {
   }
 }
 
+function toggleManualCalc() {
+  const body = document.getElementById('manual-body');
+  const chevron = document.getElementById('manual-chevron');
+  const isOpen = body.classList.toggle('open');
+  chevron.classList.toggle('open', isOpen);
+}
+
+function populateManualFactionOptions() {
+  const sel = document.getElementById('manual-faction-select');
+  const prevVal = sel.value;
+  sel.innerHTML = '';
+  const factions = ['US', 'GER', 'RUS', 'GB', 'CAN'];
+  factions.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f;
+    opt.textContent = teamLabel(f.toLowerCase());
+    sel.appendChild(opt);
+  });
+  sel.value = factions.includes(prevVal) ? prevVal : 'US';
+}
+
+function onManualInput() {
+  const distInput = document.getElementById('manual-dist-input');
+  const factionSelect = document.getElementById('manual-faction-select');
+  const resultEl = document.getElementById('manual-result-value');
+  const dist = parseFloat(distInput.value);
+  const t = I18N[currentLang];
+
+  if (isNaN(dist) || dist <= 0) {
+    resultEl.textContent = '—';
+    return;
+  }
+
+  const milValue = manualToMil(dist, factionSelect.value);
+  if (milValue === null) {
+    resultEl.textContent = t.outOfRange;
+    resultEl.style.fontSize = '0.85em';
+  } else {
+    resultEl.textContent = milValue;
+    resultEl.style.fontSize = '1.6em';
+  }
+}
+
 function detectPreferredLang() {
   const browserLangs = navigator.languages || [navigator.language || navigator.userLanguage || 'en'];
   for (const lang of browserLangs) {
@@ -761,6 +985,7 @@ function detectPreferredLang() {
 
 window.addEventListener('resize', drawLine);
 initMapOptions();
+populateManualFactionOptions();
 setLang(detectPreferredLang());
 </script>
 
