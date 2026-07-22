@@ -175,15 +175,24 @@ select {
 
 .target-marker {
   position: absolute;
-  width: 26px;
-  height: 26px;
   transform: translate(-50%,-50%);
   pointer-events: none;
   z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.target-marker::before, .target-marker::after { content: ''; position: absolute; background: var(--accent); }
-.target-marker::before { width: 2px; height: 26px; left: 12px; top: 0; }
-.target-marker::after { width: 26px; height: 2px; top: 12px; left: 0; }
+.dispersion-circle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #e63946;
+  border-radius: 50%;
+  background: rgba(230,57,70,0.12);
+  box-sizing: border-box;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3) inset;
+}
+
 
 .line-svg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 4; }
 
@@ -296,6 +305,7 @@ select {
 </p>
 
 <script>
+const DISPERSION_RADIUS_M = 20; // HLL artillery dispersion radius in meters
 const MAP_DATA = {"CAR": {"name_de": "Carentan", "name_en": "Carentan", "image": "images/maps/map_carentan.webp", "width": 2016, "height": 2016, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.01759, "yPct": 0.47834}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.01759, "yPct": 0.4739}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.0176, "yPct": 0.46976}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.98061, "yPct": 0.50255}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.98061, "yPct": 0.49829}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.98061, "yPct": 0.49388}]}, "DRI": {"name_de": "Driel", "name_en": "Driel", "image": "images/maps/map_driel.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.45684, "yPct": 0.94221}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.46843, "yPct": 0.94057}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.47651, "yPct": 0.93832}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.41894, "yPct": 0.07479}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.42641, "yPct": 0.07502}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.43569, "yPct": 0.07461}]}, "ELA": {"name_de": "El Alamein", "name_en": "El Alamein", "image": "images/maps/map_elalamein.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96166, "yPct": 0.46473}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.95722, "yPct": 0.4509}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.95155, "yPct": 0.43271}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.03647, "yPct": 0.48368}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.04173, "yPct": 0.46884}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02566, "yPct": 0.45081}]}, "EBR": {"name_de": "Elsenborn Ridge", "name_en": "Elsenborn Ridge", "image": "images/maps/map_elsenborn.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.50986, "yPct": 0.04346}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.51432, "yPct": 0.04487}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.51769, "yPct": 0.04303}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.46003, "yPct": 0.97004}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.468, "yPct": 0.96631}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.47567, "yPct": 0.97066}]}, "FOY": {"name_de": "Foy", "name_en": "Foy", "image": "images/maps/map_foy.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.57104, "yPct": 0.98158}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.57577, "yPct": 0.98408}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.57987, "yPct": 0.98536}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.53114, "yPct": 0.02643}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.5373, "yPct": 0.02686}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.54427, "yPct": 0.02686}]}, "HUR": {"name_de": "Hürtgen Forest", "name_en": "Hürtgen Forest", "image": "images/maps/map_hurtgen.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.95967, "yPct": 0.55256}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.95967, "yPct": 0.55659}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.95967, "yPct": 0.5603}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.03584, "yPct": 0.47503}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.02834, "yPct": 0.47992}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.03534, "yPct": 0.48539}]}, "JUN": {"name_de": "Juno Beach", "name_en": "Juno Beach", "image": "images/maps/map_juno_beach.webp", "width": 2000, "height": 2000, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.45991, "yPct": 0.96206}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.47598, "yPct": 0.96334}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.468, "yPct": 0.96664}, {"team": "ger", "label_de": "Deutschland Stand 4", "label_en": "Germany Stand 4", "xPct": 0.24869, "yPct": 0.98377}, {"team": "ger", "label_de": "Deutschland Stand 5", "label_en": "Germany Stand 5", "xPct": 0.25577, "yPct": 0.98747}, {"team": "ger", "label_de": "Deutschland Stand 6", "label_en": "Germany Stand 6", "xPct": 0.25968, "yPct": 0.97901}, {"team": "ger", "label_de": "Deutschland Stand 7", "label_en": "Germany Stand 7", "xPct": 0.77166, "yPct": 0.98873}, {"team": "ger", "label_de": "Deutschland Stand 8", "label_en": "Germany Stand 8", "xPct": 0.77975, "yPct": 0.99332}, {"team": "ger", "label_de": "Deutschland Stand 9", "label_en": "Germany Stand 9", "xPct": 0.78773, "yPct": 0.98949}, {"team": "can", "label_de": "Kanada Stand 1", "label_en": "Canada Stand 1", "xPct": 0.53757, "yPct": 0.04733}, {"team": "can", "label_de": "Kanada Stand 2", "label_en": "Canada Stand 2", "xPct": 0.54615, "yPct": 0.04348}, {"team": "can", "label_de": "Kanada Stand 3", "label_en": "Canada Stand 3", "xPct": 0.53073, "yPct": 0.04121}, {"team": "can", "label_de": "Kanada Stand 4", "label_en": "Canada Stand 4", "xPct": 0.72169, "yPct": 0.04761}, {"team": "can", "label_de": "Kanada Stand 5", "label_en": "Canada Stand 5", "xPct": 0.72435, "yPct": 0.04959}, {"team": "can", "label_de": "Kanada Stand 6", "label_en": "Canada Stand 6", "xPct": 0.72674, "yPct": 0.0496}, {"team": "can", "label_de": "Kanada Stand 7", "label_en": "Canada Stand 7", "xPct": 0.2378, "yPct": 0.03445}, {"team": "can", "label_de": "Kanada Stand 8", "label_en": "Canada Stand 8", "xPct": 0.24222, "yPct": 0.03481}, {"team": "can", "label_de": "Kanada Stand 9", "label_en": "Canada Stand 9", "xPct": 0.24557, "yPct": 0.03512}]}, "KHA": {"name_de": "Kharkov", "name_en": "Kharkov", "image": "images/maps/map_kharkov.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.48311, "yPct": 0.95731}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.49197, "yPct": 0.9581}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.50104, "yPct": 0.96181}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.52845, "yPct": 0.02341}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.5328, "yPct": 0.02554}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.53834, "yPct": 0.02763}]}, "MOR": {"name_de": "Mortain", "name_en": "Mortain", "image": "images/maps/map_mortain.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.05842, "yPct": 0.46752}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.05799, "yPct": 0.46108}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.05724, "yPct": 0.4561}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.95167, "yPct": 0.48692}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.95085, "yPct": 0.47963}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.95173, "yPct": 0.47314}]}, "OMA": {"name_de": "Omaha Beach", "name_en": "Omaha Beach", "image": "images/maps/map_omaha.webp", "width": 1984, "height": 1984, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.02718, "yPct": 0.50871}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.02751, "yPct": 0.49666}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02939, "yPct": 0.52082}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.89238, "yPct": 0.53443}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.8955, "yPct": 0.54796}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.89984, "yPct": 0.51867}]}, "SME": {"name_de": "Sainte-Mère-Église", "name_en": "Sainte-Mère-Église", "image": "images/maps/map_stmereeglise.webp", "width": 1984, "height": 1984, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96347, "yPct": 0.50282}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.96347, "yPct": 0.49467}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.96347, "yPct": 0.48774}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.02096, "yPct": 0.50936}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.02061, "yPct": 0.50518}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.02028, "yPct": 0.50119}]}, "SMO": {"name_de": "Smolensk", "name_en": "Smolensk", "image": "images/maps/map_smolensk.webp", "width": 2000, "height": 2000, "stands": [{"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.9915, "yPct": 0.49665}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.9915, "yPct": 0.49}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.9915, "yPct": 0.48237}, {"team": "us", "label_de": "USA Stand 4", "label_en": "USA Stand 4", "xPct": 0.99056, "yPct": 0.72934}, {"team": "us", "label_de": "USA Stand 5", "label_en": "USA Stand 5", "xPct": 0.97688, "yPct": 0.2616}, {"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.006, "yPct": 0.49715}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.006, "yPct": 0.48652}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.006, "yPct": 0.50753}, {"team": "ger", "label_de": "Deutschland Stand 4", "label_en": "Germany Stand 4", "xPct": 0.00693, "yPct": 0.29646}, {"team": "ger", "label_de": "Deutschland Stand 5", "label_en": "Germany Stand 5", "xPct": 0.00652, "yPct": 0.64954}]}, "TOB": {"name_de": "Tobruk", "name_en": "Tobruk", "image": "images/maps/map_tobruk.webp", "width": 2000, "height": 2000, "stands": [{"team": "ger", "label_de": "Deutschland Stand 1", "label_en": "Germany Stand 1", "xPct": 0.03788, "yPct": 0.52576}, {"team": "ger", "label_de": "Deutschland Stand 2", "label_en": "Germany Stand 2", "xPct": 0.03359, "yPct": 0.52992}, {"team": "ger", "label_de": "Deutschland Stand 3", "label_en": "Germany Stand 3", "xPct": 0.03831, "yPct": 0.53768}, {"team": "us", "label_de": "USA Stand 1", "label_en": "USA Stand 1", "xPct": 0.96563, "yPct": 0.46155}, {"team": "us", "label_de": "USA Stand 2", "label_en": "USA Stand 2", "xPct": 0.9632, "yPct": 0.47037}, {"team": "us", "label_de": "USA Stand 3", "label_en": "USA Stand 3", "xPct": 0.96523, "yPct": 0.49201}]}};
 
 
@@ -503,6 +513,18 @@ function renderMarkers() {
     tel.className = 'target-marker';
     tel.style.left = (targetPct.x * 100) + '%';
     tel.style.top = (targetPct.y * 100) + '%';
+
+    const outerRect = mapOuter.getBoundingClientRect();
+    const dispersionDiameterM = DISPERSION_RADIUS_M * 2;
+    const diameterPx = (dispersionDiameterM / map.width) * outerRect.width;
+
+    tel.style.width = diameterPx + 'px';
+    tel.style.height = diameterPx + 'px';
+
+    const circle = document.createElement('div');
+    circle.className = 'dispersion-circle';
+    tel.appendChild(circle);
+
     mapWrapper.appendChild(tel);
   }
   drawLine();
@@ -708,8 +730,17 @@ function updateResults() {
   }
 }
 
+function detectPreferredLang() {
+  const browserLangs = navigator.languages || [navigator.language || navigator.userLanguage || 'en'];
+  for (const lang of browserLangs) {
+    if (lang.toLowerCase().startsWith('de')) return 'de';
+  }
+  return 'en';
+}
+
 window.addEventListener('resize', drawLine);
 initMapOptions();
+setLang(detectPreferredLang());
 </script>
 
 </body>
